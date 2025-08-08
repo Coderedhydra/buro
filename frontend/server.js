@@ -41,6 +41,12 @@ app.get('/', (_req, res) => {
     <textarea name="plan" placeholder='Paste plan JSON here' rows="8" cols="80"></textarea>
     <button type="submit">Generate</button>
   </form>
+  <h2>Analyze Result (demo)</h2>
+  <form method="post" action="/analyze-demo">
+    <textarea name="baseline" placeholder='{"status":200,"len":1000}' rows="3" cols="80"></textarea>
+    <textarea name="probe" placeholder='{"status":500,"len":1200,"body_contains":"error"}' rows="3" cols="80"></textarea>
+    <button type="submit">Analyze</button>
+  </form>
 </body>
 </html>`)
 })
@@ -97,6 +103,26 @@ app.post('/generate-demo', async (req, res) => {
     res.set('Content-Type', 'application/json').send(JSON.stringify(j, null, 2))
   } catch (e) {
     res.status(400).send('Invalid plan JSON or API error')
+  }
+})
+
+app.post('/analyze-demo', async (req, res) => {
+  const { baseline, probe } = req.body
+  try {
+    const baseline_meta = JSON.parse(baseline)
+    const probe_meta = JSON.parse(probe)
+    const r = await fetch(`${apiBase}/analyzer/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseline_meta, probe_meta }),
+    })
+    const j = await r.json()
+    if (!r.ok) {
+      return res.status(400).send(`Analyze failed: ${j.detail || r.status}`)
+    }
+    res.set('Content-Type', 'application/json').send(JSON.stringify(j, null, 2))
+  } catch (e) {
+    res.status(400).send('Invalid JSON or API error')
   }
 })
 

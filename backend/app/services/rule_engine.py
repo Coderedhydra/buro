@@ -1,16 +1,13 @@
 from __future__ import annotations
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 SEVERITY_ORDER = ["info", "low", "medium", "high", "critical"]
 
 
 def _infer_exploitability(analyzer_result: Dict[str, Any]) -> bool:
-    # Prefer explicit flag from analyzer/LLM
-    exploitable = analyzer_result.get("exploitable")
-    if isinstance(exploitable, bool):
-        return exploitable
+    if isinstance(analyzer_result.get("exploitable"), bool):
+        return bool(analyzer_result["exploitable"])
 
-    # Simple heuristic keywords in anomalies/rationale
     text = " ".join([
         " ".join(analyzer_result.get("anomalies") or []),
         str(analyzer_result.get("rationale") or ""),
@@ -49,4 +46,6 @@ def classify_finding(analyzer_result: Dict[str, Any]) -> Dict[str, Any]:
         "exploitable": exploitable,
         "confidence": confidence,
         "triage": triage,
+        "vuln_type": analyzer_result.get("vuln_type"),
+        "cwe": analyzer_result.get("cwe"),
     }
