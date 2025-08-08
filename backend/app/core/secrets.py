@@ -7,6 +7,7 @@ class SecretStore:
     def __init__(self) -> None:
         self._lock = RLock()
         self._gemini_api_key: Optional[str] = None
+        self._openai_api_key: Optional[str] = None
 
     def set_gemini_api_key(self, api_key: str) -> None:
         with self._lock:
@@ -15,6 +16,14 @@ class SecretStore:
     def get_gemini_api_key(self) -> Optional[str]:
         with self._lock:
             return self._gemini_api_key
+
+    def set_openai_api_key(self, api_key: str) -> None:
+        with self._lock:
+            self._openai_api_key = api_key.strip()
+
+    def get_openai_api_key(self) -> Optional[str]:
+        with self._lock:
+            return self._openai_api_key
 
 
 secret_store = SecretStore()

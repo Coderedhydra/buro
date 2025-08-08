@@ -22,4 +22,9 @@ def create_llm_adapter(config: LLMConfig) -> LLMAdapter:
         if not config.api_key:
             raise ValueError("Gemini API key is not set")
         return GeminiAdapter(model=config.model, api_key=config.api_key)
+    if config.provider == "openai":
+        from .openai_adapter import OpenAIAdapter
+        if not config.api_key:
+            raise ValueError("OpenAI API key is not set")
+        return OpenAIAdapter(model=config.model, api_key=config.api_key)
     raise ValueError(f"Unsupported LLM provider: {config.provider}")

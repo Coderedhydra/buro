@@ -13,11 +13,13 @@ router = APIRouter()
 class OneClickRequest(BaseModel):
     api_key: SecretStr
     target_url: HttpUrl
-    model: Optional[str] = None  # e.g., "gemini-2.0-flash" or "gemini-1.5-flash"
+    model: Optional[str] = None  # e.g., "gemini-2.0-flash" or "gpt-5"
+    provider: str = "gemini"     # "gemini" or "openai"
 
 class OneClickResponse(BaseModel):
     target_url: HttpUrl
     model: str
+    provider: str
     discovered: List[str]
     plans: Dict[str, Any]
 
@@ -26,9 +28,18 @@ async def oneclick_start(payload: OneClickRequest) -> OneClickResponse:
     key = payload.api_key.get_secret_value().strip()
     if not key:
         raise HTTPException(status_code=400, detail="API key cannot be empty")
-    secret_store.set_gemini_api_key(key)
 
-    model = payload.model or "gemini-1.5-flash"
+    provider = payload.provider.lower().strip() or "gemini"
+    if provider == "gemini":
+        secret_store.set_gemini_api_key(key)
+        default_model = "gemini-1.5-flash"
+    elif provider == "openai":
+        secret_store.set_openai_api_key(key)
+        default_model = "gpt-5"
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
+
+    model = payload.model or default_model
 
     # Fetch target HTML safely
     async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
@@ -54,13 +65,13 @@ async def oneclick_start(payload: OneClickRequest) -> OneClickResponse:
             seen.append(u)
     discovered = seen[:25]
 
-    # Plan safe tests for each discovered link (GET)
+    # Plan safe tests
     plans: Dict[str, Any] = {}
     try:
         for url in discovered or [str(payload.target_url)]:
-            plan = generate_safe_test_plan(method="GET", url=url, params=[], model=model)
+            plan = generate_safe_test_plan(method="GET", url=url, params=[], model=model, provider=provider)
             plans[url] = plan
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"LLM planning failed (model='{model}') - {e}")
+        raise HTTPException(status_code=400, detail=f"LLM planning failed (provider='{provider}', model='{model}') - {e}")
 
-    return OneClickResponse(target_url=payload.target_url, model=model, discovered=discovered, plans=plans)
+    return OneClickResponse(target_url=payload.target_url, model=model, provider=provider, discovered=discovered, plans=plans)
