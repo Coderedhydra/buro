@@ -1,0 +1,77 @@
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, HttpUrl, SecretStr
+from typing import Any, Dict, List, Optional
+import httpx
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
+
+from app.core.secrets import secret_store
+from app.services.planner import generate_safe_test_plan
+
+router = APIRouter()
+
+class OneClickRequest(BaseModel):
+    api_key: SecretStr
+    target_url: HttpUrl
+    model: Optional[str] = None  # e.g., "gemini-2.0-flash" or "gpt-5"
+    provider: str = "gemini"     # "gemini" or "openai"
+
+class OneClickResponse(BaseModel):
+    target_url: HttpUrl
+    model: str
+    provider: str
+    discovered: List[str]
+    plans: Dict[str, Any]
+
+@router.post("/start", response_model=OneClickResponse)
+async def oneclick_start(payload: OneClickRequest) -> OneClickResponse:
+    key = payload.api_key.get_secret_value().strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="API key cannot be empty")
+
+    provider = payload.provider.lower().strip() or "gemini"
+    if provider == "gemini":
+        secret_store.set_gemini_api_key(key)
+        default_model = "gemini-1.5-flash"
+    elif provider == "openai":
+        secret_store.set_openai_api_key(key)
+        default_model = "gpt-5"
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
+
+    model = payload.model or default_model
+
+    # Fetch target HTML safely
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        try:
+            resp = await client.get(str(payload.target_url))
+            html = resp.text
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to fetch target: {e}")
+
+    # Extract same-origin links (basic)
+    parsed_root = urlparse(str(payload.target_url))
+    soup = BeautifulSoup(html, "html.parser")
+    links: List[str] = []
+    for a in soup.find_all("a", href=True):
+        abs_url = urljoin(str(payload.target_url), a["href"])
+        p = urlparse(abs_url)
+        if p.netloc == parsed_root.netloc:
+            links.append(abs_url)
+    # Deduplicate & limit
+    seen = []
+    for u in links:
+        if u not in seen:
+            seen.append(u)
+    discovered = seen[:25]
+
+    # Plan safe tests
+    plans: Dict[str, Any] = {}
+    try:
+        for url in discovered or [str(payload.target_url)]:
+            plan = generate_safe_test_plan(method="GET", url=url, params=[], model=model, provider=provider)
+            plans[url] = plan
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"LLM planning failed (provider='{provider}', model='{model}') - {e}")
+
+    return OneClickResponse(target_url=payload.target_url, model=model, provider=provider, discovered=discovered, plans=plans)
