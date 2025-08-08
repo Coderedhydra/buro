@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from app.llm.adapter import LLMConfig, create_llm_adapter
 from app.llm.prompts import ANALYZER_SYSTEM_PROMPT, ANALYZER_USER_PROMPT_TEMPLATE
@@ -18,12 +18,12 @@ def _strip_code_fences(text: str) -> str:
     return cleaned
 
 
-def analyze_probe_result(*, baseline_meta: Dict[str, Any], probe_meta: Dict[str, Any]) -> Dict[str, Any]:
+def analyze_probe_result(*, baseline_meta: Dict[str, Any], probe_meta: Dict[str, Any], model: Optional[str] = None) -> Dict[str, Any]:
     api_key = secret_store.get_gemini_api_key()
     if not api_key:
         raise RuntimeError("Gemini API key not set")
 
-    adapter = create_llm_adapter(LLMConfig(provider="gemini", model="gemini-1.5-flash", api_key=api_key))
+    adapter = create_llm_adapter(LLMConfig(provider="gemini", model=model or "gemini-1.5-flash", api_key=api_key))
 
     user_prompt = ANALYZER_USER_PROMPT_TEMPLATE.format(baseline_meta=baseline_meta, probe_meta=probe_meta)
     raw = adapter.generate(system_prompt=ANALYZER_SYSTEM_PROMPT, user_prompt=user_prompt, temperature=0.2, max_tokens=768)

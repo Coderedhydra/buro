@@ -10,10 +10,12 @@ from .routes.approvals import router as approvals_router
 from .routes.config import router as config_router
 from .routes.planner import router as planner_router
 from .routes.analyzer import router as analyzer_router
+from .routes.oneclick import router as oneclick_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, tags=["health"])
 api_router.include_router(config_router, prefix="/config", tags=["config"])
+api_router.include_router(oneclick_router, prefix="/oneclick", tags=["oneclick"])
 api_router.include_router(planner_router, prefix="/planner", tags=["planner"])
 api_router.include_router(analyzer_router, prefix="/analyzer", tags=["analyzer"])
 api_router.include_router(scan_router, prefix="/scan", tags=["scan"])

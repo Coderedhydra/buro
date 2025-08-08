@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.llm.adapter import LLMConfig, create_llm_adapter
 from app.llm.prompts import PLANNER_SYSTEM_PROMPT, PLANNER_USER_PROMPT_TEMPLATE
@@ -19,12 +19,12 @@ def _strip_code_fences(text: str) -> str:
     return cleaned
 
 
-def generate_safe_test_plan(*, method: str, url: str, params: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_safe_test_plan(*, method: str, url: str, params: List[Dict[str, Any]], model: Optional[str] = None) -> Dict[str, Any]:
     api_key = secret_store.get_gemini_api_key()
     if not api_key:
         raise RuntimeError("Gemini API key not set")
 
-    adapter = create_llm_adapter(LLMConfig(provider="gemini", model="gemini-1.5-flash", api_key=api_key))
+    adapter = create_llm_adapter(LLMConfig(provider="gemini", model=model or "gemini-1.5-flash", api_key=api_key))
 
     user_prompt = PLANNER_USER_PROMPT_TEMPLATE.format(method=method, url=url, params_json=json.dumps(params))
     raw = adapter.generate(system_prompt=PLANNER_SYSTEM_PROMPT, user_prompt=user_prompt, temperature=0.1, max_tokens=1024)
