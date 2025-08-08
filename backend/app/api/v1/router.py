@@ -7,9 +7,13 @@ from .routes.probe import router as probe_router
 from .routes.findings import router as findings_router
 from .routes.report import router as report_router
 from .routes.approvals import router as approvals_router
+from .routes.config import router as config_router
+from .routes.planner import router as planner_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, tags=["health"])
+api_router.include_router(config_router, prefix="/config", tags=["config"])
+api_router.include_router(planner_router, prefix="/planner", tags=["planner"])
 api_router.include_router(scan_router, prefix="/scan", tags=["scan"])
 api_router.include_router(inventory_router, prefix="/inventory", tags=["inventory"])
 api_router.include_router(endpoint_router, prefix="/endpoint", tags=["endpoint"])

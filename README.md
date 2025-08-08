@@ -13,23 +13,34 @@ docker compose up --build
 
 Services:
 - API: http://localhost:8000/health
-- Frontend placeholder: http://localhost:5173/health
+- Frontend placeholder: http://localhost:5173/ (enter Gemini key and plan)
 - Redis: localhost:6379
 - Postgres: localhost:5432
 
-## API (stubs)
+## LLM (Gemini) setup
 
-- `GET /health` -> status ok
-- `POST /api/v1/scan` -> queue a scan
-- `GET /api/v1/inventory` -> list inventory
-- `GET /api/v1/endpoint/{id}` -> endpoint details
-- `POST /api/v1/probe` -> run a probe
-- `GET /api/v1/findings` -> list findings
-- `POST /api/v1/findings/{id}/approve` -> approve
-- `GET /api/v1/report/{finding_id}` -> download report
+- Open the frontend at `/` and submit your Gemini API key.
+- Programmatically, set via:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/config/llm/gemini-key \
+  -H 'Content-Type: application/json' \
+  -d '{"api_key":"YOUR_GEMINI_API_KEY"}'
+```
+
+## Plan safe payload tests (demo)
+
+```bash
+curl -X POST http://localhost:8000/api/v1/planner/plan \
+  -H 'Content-Type: application/json' \
+  -d '{"method":"GET","url":"https://example.com/api/items","params":[{"name":"q","location":"query"}]}'
+```
+
+The planner asks Gemini to propose only non-destructive, low-risk probes and returns a concise JSON plan.
 
 ## Next steps
 
+- Wire planner output to the probe engine to generate and send safe payloads.
 - Implement discovery (crawler + Playwright), parameter extraction, and baseline probes.
-- Add LLM planner/analyzer adapters with safety logging.
-- Build React + Tailwind dashboard replacing the placeholder frontend.
+- Add analyzer endpoint using Gemini to compare baseline/probe responses.
+- Replace placeholder frontend with React + Tailwind dashboard.
