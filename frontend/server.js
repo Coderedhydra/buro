@@ -40,13 +40,16 @@ app.post('/oneclick-demo', async (req, res) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ api_key, target_url, model }),
     })
-    const j = await r.json()
+    const text = await r.text()
+    let payload
+    try { payload = JSON.parse(text) } catch { payload = { raw: text } }
     if (!r.ok) {
-      return res.status(400).send(`One-click failed: ${j.detail || r.status}`)
+      const detail = payload?.detail || payload?.raw || r.statusText || r.status
+      return res.status(400).send(`One-click failed: ${detail}`)
     }
-    res.set('Content-Type', 'application/json').send(JSON.stringify(j, null, 2))
+    res.set('Content-Type', 'application/json').send(JSON.stringify(payload, null, 2))
   } catch (e) {
-    res.status(500).send('Error contacting API')
+    res.status(500).send(`Error contacting API: ${(e && e.message) || e}`)
   }
 })
 

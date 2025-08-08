@@ -56,8 +56,11 @@ async def oneclick_start(payload: OneClickRequest) -> OneClickResponse:
 
     # Plan safe tests for each discovered link (GET)
     plans: Dict[str, Any] = {}
-    for url in discovered:
-        plan = generate_safe_test_plan(method="GET", url=url, params=[], model=model)
-        plans[url] = plan
+    try:
+        for url in discovered or [str(payload.target_url)]:
+            plan = generate_safe_test_plan(method="GET", url=url, params=[], model=model)
+            plans[url] = plan
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"LLM planning failed (model='{model}') - {e}")
 
     return OneClickResponse(target_url=payload.target_url, model=model, discovered=discovered, plans=plans)
